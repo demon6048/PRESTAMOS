@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Deudas y Pagos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- html2canvas (Para descargar voucher como imagen) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a', // blue-900
+                        secondary: '#3b82f6', // blue-500
+                        accent: '#0ea5e9', // sky-500
+                        dark: '#0f172a', // slate-900
+                        light: '#f8fafc', // slate-50
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .hide { display: none !important; }
+        .active-nav { background-color: rgba(255, 255, 255, 0.1); border-left: 4px solid #3b82f6; }
+
+        /* Estilos específicos para impresión de voucher */
+        @media print {
+            body * { visibility: hidden; }
+            #voucher-print-area, #voucher-print-area * { visibility: visible; }
+            #voucher-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; box-shadow: none; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="bg-dark text-slate-300 w-64 flex-shrink-0 h-full flex flex-col transition-transform duration-300 absolute z-20 md:relative md:translate-x-0 -translate-x-full">
+        <div class="p-6 flex items-center justify-between border-b border-slate-700">
+            <div class="flex items-center gap-3 text-white font-bold text-xl tracking-tight">
+                <i class="ph ph-wallet text-secondary text-2xl"></i>
+                <span>FinControl</span>
+            </div>
+            <button id="close-sidebar" class="md:hidden text-slate-400 hover:text-white">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+        
+        <nav class="flex-1 py-4 overflow-y-auto">
+            <ul class="space-y-1">
+                <li>
+                    <a href="#" data-view="dashboard" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors active-nav">
+                        <i class="ph ph-squares-four text-lg"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="acreedores" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i class="ph ph-users text-lg"></i> Acreedores
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="deudas" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i class="ph ph-file-text text-lg"></i> Deudas y Préstamos
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="pagos" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i class="ph ph-money text-lg"></i> Pagos y Abonos
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-view="historial" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i class="ph ph-clock-counter-clockwise text-lg"></i> Historial y Reportes
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-700 text-xs text-slate-500 text-center">
+            FinControl v1.0 <br> Gestor Financiero
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-100 relative">
+        <!-- TOPBAR -->
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
+            <button id="open-sidebar" class="md:hidden text-slate-500 hover:text-slate-700">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <div class="font-semibold text-slate-700 hidden md:block" id="topbar-title">Dashboard General</div>
+            
+            <div class="flex items-center gap-3 sm:gap-4">
+                <!-- Indicador de Nube -->
+                <div id="cloud-status" class="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full text-xs font-medium text-slate-600 border border-slate-200 transition-colors" title="Estado de conexión con la base de datos">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></div>
+                    <span id="status-text" class="hidden sm:inline-block">Conectando...</span>
+                </div>
+
+                <div class="hidden sm:block text-sm text-slate-500 border-l border-slate-200 pl-4">
+                    <span id="current-date"></span>
+                </div>
+                <div class="h-8 w-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold">
+                    A
+                </div>
+            </div>
+        </header>
+
+        <!-- VIEWS CONTAINER -->
+        <div class="flex-1 overflow-auto p-4 sm:p-6" id="views-container">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view-section">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">Resumen Financiero</h2>
+                
+                <!-- Kpis -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="bg-rose-100 text-rose-600 p-3 rounded-lg"><i class="ph ph-trend-down text-2xl"></i></div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Deuda Total</p>
+                            <h3 class="text-2xl font-bold text-slate-800" id="dash-deuda-total">S/ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="bg-emerald-100 text-emerald-600 p-3 rounded-lg"><i class="ph ph-check-circle text-2xl"></i></div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Total Pagado</p>
+                            <h3 class="text-2xl font-bold text-slate-800" id="dash-total-pagado">S/ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="bg-amber-100 text-amber-600 p-3 rounded-lg"><i class="ph ph-warning-circle text-2xl"></i></div>
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">Saldo Pendiente</p>
+                            <h3 class="text-2xl font-bold text-slate-800" id="dash-saldo-pendiente">S/ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <div class="flex justify-between items-center text-sm mb-2">
+                            <span class="text-slate-500">Deudas Activas</span>
+                            <span class="font-bold text-slate-700" id="dash-activas">0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm mb-2">
+                            <span class="text-slate-500">Canceladas</span>
+                            <span class="font-bold text-slate-700" id="dash-canceladas">0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-slate-500">Acreedores</span>
+                            <span class="font-bold text-slate-700" id="dash-acreedores">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800">Últimos Pagos Registrados</h3>
+                        <button onclick="switchView('historial')" class="text-sm text-secondary font-medium hover:underline">Ver todo</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">Fecha</th>
+                                    <th class="px-6 py-3 font-medium">Acreedor</th>
+                                    <th class="px-6 py-3 font-medium">Deuda ID</th>
+                                    <th class="px-6 py-3 font-medium">Monto</th>
+                                    <th class="px-6 py-3 font-medium">Método</th>
+                                    <th class="px-6 py-3 font-medium">Voucher</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-pagos-body" class="divide-y divide-slate-200">
+                                <!-- Filas generadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ACREEDORES -->
+            <div id="view-acreedores" class="view-section hide">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Directorio de Acreedores</h2>
+                    <button onclick="openModal('modal-acreedor')" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
+                        <i class="ph ph-plus-circle text-lg"></i> Nuevo Acreedor
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <div class="relative w-full max-w-sm">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="search-acreedores" placeholder="Buscar por nombre o DNI..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-sm">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">ID</th>
+                                    <th class="px-6 py-3 font-medium">Nombre</th>
+                                    <th class="px-6 py-3 font-medium">DNI</th>
+                                    <th class="px-6 py-3 font-medium">Teléfono / WhatsApp</th>
+                                    <th class="px-6 py-3 font-medium text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-acreedores" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: DEUDAS -->
+            <div id="view-deudas" class="view-section hide">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Gestión de Deudas</h2>
+                    <button onclick="openModal('modal-deuda')" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
+                        <i class="ph ph-plus-circle text-lg"></i> Nueva Deuda
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">Cód.</th>
+                                    <th class="px-6 py-3 font-medium">Acreedor</th>
+                                    <th class="px-6 py-3 font-medium">Fecha</th>
+                                    <th class="px-6 py-3 font-medium">Total</th>
+                                    <th class="px-6 py-3 font-medium">Pagado</th>
+                                    <th class="px-6 py-3 font-medium">Saldo</th>
+                                    <th class="px-6 py-3 font-medium">Estado</th>
+                                    <th class="px-6 py-3 font-medium text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-deudas" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: PAGOS -->
+            <div id="view-pagos" class="view-section hide">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">Registrar Nuevo Pago</h2>
+                
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-3xl">
+                    <form id="form-pago" onsubmit="event.preventDefault(); registrarPago();">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <!-- Selección de Deuda -->
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Seleccionar Deuda (Acreedor - Monto Pendiente)</label>
+                                <select id="pago-deuda" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-transparent" required onchange="actualizarInfoPago()">
+                                    <option value="">Seleccione una deuda activa...</option>
+                                    <!-- Opciones JS -->
+                                </select>
+                            </div>
+                            
+                            <!-- Info Auto-calculada -->
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="text-sm text-slate-500 mb-1">Saldo Anterior</p>
+                                <p class="text-xl font-bold text-slate-700" id="info-saldo-anterior">S/ 0.00</p>
+                                <input type="hidden" id="pago-saldo-anterior-val" value="0">
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="text-sm text-slate-500 mb-1">Nuevo Saldo Restante</p>
+                                <p class="text-xl font-bold text-secondary" id="info-saldo-restante">S/ 0.00</p>
+                            </div>
+
+                            <!-- Campos de Pago -->
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Monto a Pagar (S/)</label>
+                                <input type="number" step="0.01" id="pago-monto" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary text-lg font-semibold text-slate-800" required oninput="calcularSaldoRestante()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Pago</label>
+                                <input type="date" id="pago-fecha" class="w-full p-2.5 border border-slate-300 rounded-lg" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
+                                <select id="pago-metodo" class="w-full p-2.5 border border-slate-300 rounded-lg" required>
+                                    <option value="Transferencia">Transferencia Bancaria</option>
+                                    <option value="Yape">Yape / Plin</option>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Deposito">Depósito en Cuenta</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">N° de Operación (Opcional)</label>
+                                <input type="text" id="pago-operacion" class="w-full p-2.5 border border-slate-300 rounded-lg" placeholder="Ej. 123456789">
+                            </div>
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
+                                <input type="text" id="pago-observacion" class="w-full p-2.5 border border-slate-300 rounded-lg" placeholder="Detalle adicional del pago...">
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                            <button type="button" onclick="document.getElementById('form-pago').reset(); actualizarInfoPago();" class="px-6 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors">Limpiar</button>
+                            <button type="submit" class="bg-primary hover:bg-blue-800 text-white px-8 py-2.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2">
+                                <i class="ph ph-check-circle text-xl"></i> Procesar Pago y Generar Voucher
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- VIEW: HISTORIAL -->
+            <div id="view-historial" class="view-section hide">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">Historial de Pagos</h2>
+                
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">Voucher</th>
+                                    <th class="px-6 py-3 font-medium">Fecha</th>
+                                    <th class="px-6 py-3 font-medium">Acreedor</th>
+                                    <th class="px-6 py-3 font-medium">Deuda ID</th>
+                                    <th class="px-6 py-3 font-medium text-emerald-600">Monto Abonado</th>
+                                    <th class="px-6 py-3 font-medium">Saldo Rest.</th>
+                                    <th class="px-6 py-3 font-medium">Método</th>
+                                    <th class="px-6 py-3 font-medium">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-pagos" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ================== MODALES ================== -->
+
+    <!-- Modal Acreedor -->
+    <div id="modal-acreedor" class="fixed inset-0 z-50 flex items-center justify-center hide glass-modal px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800" id="modal-acreedor-title">Nuevo Acreedor</h3>
+                <button onclick="closeModal('modal-acreedor')" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <form id="form-acreedor" onsubmit="event.preventDefault(); guardarAcreedor();">
+                    <input type="hidden" id="acr-id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Completo / Entidad</label>
+                            <input type="text" id="acr-nombre" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">DNI / RUC</label>
+                            <input type="text" id="acr-dni" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">WhatsApp / Teléfono</label>
+                            <input type="tel" id="acr-telefono" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
+                            <textarea id="acr-obs" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" onclick="closeModal('modal-acreedor')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800 font-medium transition-colors">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Deuda -->
+    <div id="modal-deuda" class="fixed inset-0 z-50 flex items-center justify-center hide glass-modal px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Registrar Deuda o Préstamo</h3>
+                <button onclick="closeModal('modal-deuda')" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <form id="form-deuda" onsubmit="event.preventDefault(); guardarDeuda();">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Acreedor</label>
+                            <select id="deu-acreedor" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required>
+                                <!-- JS populate -->
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Monto Prestado (S/)</label>
+                                <input type="number" step="0.01" id="deu-monto" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required oninput="calcularTotalDeuda()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Interés Total (S/) (Opcional)</label>
+                                <input type="number" step="0.01" id="deu-interes" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" value="0" oninput="calcularTotalDeuda()">
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded border border-slate-200 flex justify-between items-center">
+                            <span class="text-sm font-medium text-slate-600">Total a Pagar:</span>
+                            <span class="text-lg font-bold text-slate-800" id="deu-total-calc">S/ 0.00</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de Préstamo</label>
+                                <input type="date" id="deu-fecha" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
+                                <select id="deu-tipo" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary">
+                                    <option value="Préstamo Personal">Préstamo Personal</option>
+                                    <option value="Crédito Mercadería">Crédito Mercadería</option>
+                                    <option value="Servicio">Servicio</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Descripción / Detalle</label>
+                            <input type="text" id="deu-desc" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" onclick="closeModal('modal-deuda')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800 font-medium transition-colors">Guardar Deuda</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal VOUCHER -->
+    <div id="modal-voucher" class="fixed inset-0 z-50 flex items-center justify-center hide glass-modal px-4 py-4 overflow-y-auto">
+        <div class="bg-transparent w-full max-w-md flex flex-col items-center">
+            
+            <!-- VOUCHER DESIGN (Lo que se imprime/captura) -->
+            <div id="voucher-print-area" class="bg-white w-full rounded-lg shadow-2xl overflow-hidden relative">
+                <!-- Deco superior -->
+                <div class="bg-primary h-2 w-full"></div>
+                
+                <div class="p-6 sm:p-8">
+                    <!-- Cabecera -->
+                    <div class="text-center mb-6 border-b border-dashed border-slate-300 pb-6">
+                        <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-50 text-secondary rounded-full mb-3">
+                            <i class="ph ph-receipt text-2xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight uppercase">Comprobante de Pago</h2>
+                        <p class="text-sm text-slate-500 mt-1" id="v-empresa">FinControl - Sistema Administrativo</p>
+                    </div>
+
+                    <!-- Datos Principales -->
+                    <div class="flex justify-between items-center mb-6 bg-slate-50 p-4 rounded-lg">
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Monto Abonado</p>
+                            <p class="text-3xl font-bold text-slate-800" id="v-monto">S/ 0.00</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500 uppercase tracking-wide font-medium">Voucher N°</p>
+                            <p class="text-lg font-bold text-secondary" id="v-numero">V-0000</p>
+                        </div>
+                    </div>
+
+                    <!-- Detalles -->
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Fecha y Hora:</span>
+                            <span class="font-medium text-slate-800" id="v-fecha">--</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Acreedor:</span>
+                            <span class="font-bold text-slate-800" id="v-acreedor">--</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Cód. Deuda:</span>
+                            <span class="font-medium text-slate-800" id="v-deuda-id">--</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Método de Pago:</span>
+                            <span class="font-medium text-slate-800" id="v-metodo">--</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">N° Operación:</span>
+                            <span class="font-medium text-slate-800" id="v-operacion">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Saldos -->
+                    <div class="mt-6 bg-slate-50 p-4 rounded border border-slate-200">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-500">Saldo Anterior:</span>
+                            <span class="font-medium text-slate-600 line-through" id="v-saldo-ant">S/ 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="font-bold text-slate-700">Saldo Restante:</span>
+                            <span class="font-bold text-rose-600" id="v-saldo-rest">S/ 0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 text-center text-xs text-slate-400">
+                        <p>Documento generado electrónicamente.</p>
+                        <p id="v-obs" class="mt-1 italic text-slate-500"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción del Voucher (No se imprimen) -->
+            <div class="mt-6 flex flex-wrap justify-center gap-3 w-full">
+                <button onclick="descargarVoucher()" class="flex-1 bg-white hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-lg font-medium shadow flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph ph-download-simple text-lg"></i> Descargar
+                </button>
+                <button onclick="compartirWhatsApp()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-lg font-medium shadow flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph ph-whatsapp-logo text-lg"></i> WhatsApp
+                </button>
+                <button onclick="cerrarVoucher()" class="w-full mt-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 rounded-lg font-medium shadow transition-colors">
+                    Cerrar y Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas (Toast) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- ========================================== -->
+    <!-- ============== JAVASCRIPT ============== -->
+    <!-- ========================================== -->
+    <script>
+        /**
+         * CONFIGURACIÓN DE API
+         * Cambiar USE_MOCK_API a 'false' y colocar la URL de Google Apps Script 
+         * para usar la base de datos real en Google Sheets.
+         */
+        const CONFIG = {
+            USE_MOCK_API: false,
+            GAS_URL: 'https://script.google.com/macros/s/AKfycby1M4UccgkK7IcfjB2PGwC2d6laiz_GDfUXuor_NTjTRLfSudahF5HwaZpXlOWY0smM/exec',
+            moneda: 'S/',
+            empresa: 'FinControl Admin'
+        };
+
+        // Estado Global en Memoria
+        let state = {
+            acreedores: [],
+            deudas: [],
+            pagos: [],
+            currentVoucher: null // Para compartir
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            initUI();
+            cargarDatos();
+        });
+
+        /* ================= UI & NAVIGATION ================= */
+        function initUI() {
+            // Fecha actual
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-PE', options);
+            document.getElementById('pago-fecha').valueAsDate = new Date();
+            document.getElementById('deu-fecha').valueAsDate = new Date();
+
+            // Navegación Sidebar
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const view = link.getAttribute('data-view');
+                    switchView(view);
+                    
+                    // Update active class
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-nav'));
+                    link.classList.add('active-nav');
+                    
+                    // Close sidebar on mobile
+                    if(window.innerWidth < 768) toggleSidebar();
+                });
+            });
+
+            // Mobile Sidebar Toggle
+            document.getElementById('open-sidebar').addEventListener('click', toggleSidebar);
+            document.getElementById('close-sidebar').addEventListener('click', toggleSidebar);
+
+            // Búsqueda en vivo
+            document.getElementById('search-acreedores').addEventListener('input', (e) => renderAcreedores(e.target.value));
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hide'));
+            document.getElementById(`view-${viewId}`).classList.remove('hide');
+            
+            const titles = {
+                'dashboard': 'Dashboard General',
+                'acreedores': 'Gestión de Acreedores',
+                'deudas': 'Deudas y Préstamos',
+                'pagos': 'Registro de Pagos',
+                'historial': 'Historial de Movimientos'
+            };
+            document.getElementById('topbar-title').textContent = titles[viewId] || '';
+
+            if(viewId === 'pagos') llenarSelectDeudas();
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hide');
+            if(id === 'modal-acreedor') document.getElementById('form-acreedor').reset();
+            if(id === 'modal-deuda') {
+                document.getElementById('form-deuda').reset();
+                document.getElementById('deu-fecha').valueAsDate = new Date();
+                document.getElementById('deu-total-calc').textContent = formatDinero(0);
+                llenarSelectAcreedoresModal();
+            }
+        }
+        function closeModal(id) { document.getElementById(id).classList.add('hide'); }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-500' : 'bg-rose-500';
+            const icon = type === 'success' ? 'ph-check-circle' : 'ph-warning-circle';
+            
+            toast.className = `${bgClass} text-white px-4 py-3 rounded shadow-lg flex items-center gap-2 transform transition-all duration-300 translate-y-10 opacity-0`;
+            toast.innerHTML = `<i class="ph ${icon} text-lg"></i> <span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
+            
+            // Remove after 3s
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* ================= ESTADO DE NUBE ================= */
+        function updateCloudStatus(status) {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            const container = document.getElementById('cloud-status');
+
+            // Reset classes
+            dot.className = 'w-2 h-2 rounded-full';
+            container.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors';
+
+            switch(status) {
+                case 'connecting':
+                    dot.classList.add('bg-amber-400', 'animate-pulse');
+                    container.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+                    text.textContent = 'Conectando...';
+                    break;
+                case 'connected':
+                    dot.classList.add('bg-emerald-500');
+                    container.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
+                    text.textContent = 'Conectado a la nube';
+                    break;
+                case 'error':
+                    dot.classList.add('bg-rose-500');
+                    container.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-200');
+                    text.textContent = 'Error de conexión';
+                    break;
+                case 'local':
+                    dot.classList.add('bg-blue-500');
+                    container.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-200');
+                    text.textContent = 'Modo Local (Prueba)';
+                    break;
+            }
+        }
+
+        /* ================= HELPERS & FORMATTERS ================= */
+        const formatDinero = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto || 0);
+        const formatFecha = (fechaStr) => {
+            if(!fechaStr) return '--';
+            const d = new Date(fechaStr);
+            // Ajuste simple para evitar desfase de zona horaria al mostrar fecha simple
+            return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+        };
+        const generarID = (prefix) => `${prefix}-${Date.now().toString().slice(-6)}`;
+
+        function getEstadoColor(estado) {
+            switch(estado.toLowerCase()) {
+                case 'activa': case 'pendiente': return 'bg-amber-100 text-amber-700';
+                case 'cancelada': return 'bg-emerald-100 text-emerald-700';
+                case 'parcial': return 'bg-blue-100 text-blue-700';
+                default: return 'bg-slate-100 text-slate-700';
+            }
+        }
+
+        /* ================= DATA FETCHING (MOCK OR REAL API) ================= */
+        async function cargarDatos() {
+            updateCloudStatus('connecting');
+            try {
+                if (CONFIG.USE_MOCK_API) {
+                    cargarDatosMock();
+                    updateCloudStatus('local');
+                } else {
+                    // Fetch real desde GAS
+                    const res = await fetch(`${CONFIG.GAS_URL}?action=getAll`);
+                    const data = await res.json();
+                    if(data.status === 'success') {
+                        state.acreedores = data.acreedores || [];
+                        state.deudas = data.deudas || [];
+                        state.pagos = data.pagos || [];
+                        updateCloudStatus('connected');
+                    } else {
+                        throw new Error("Error de servidor");
+                    }
+                }
+                actualizarVistas();
+            } catch (error) {
+                console.error("Error cargando datos:", error);
+                showToast("Error al cargar la base de datos", "error");
+                updateCloudStatus('error');
+            }
+        }
+
+        function actualizarVistas() {
+            renderDashboard();
+            renderAcreedores();
+            renderDeudas();
+            renderPagosHistorial();
+        }
+
+        /* ================= MOCK DATA GENERATOR ================= */
+        function cargarDatosMock() {
+            // Generar datos ficticios para el requerimiento exacto: S/ 600 y S/ 2000
+            if(state.acreedores.length === 0) {
+                state.acreedores = [
+                    { id_acreedor: 'ACR-001', nombre: 'Juan Pérez (Ejemplo)', dni: '12345678', telefono: '987654321', observaciones: 'Prestamista habitual' },
+                    { id_acreedor: 'ACR-002', nombre: 'Banco Credito', dni: '20123456789', telefono: '', observaciones: 'Préstamo personal' }
+                ];
+                state.deudas = [
+                    { id_deuda: 'DEU-101', id_acreedor: 'ACR-001', nombre_acreedor: 'Juan Pérez (Ejemplo)', fecha_prestamo: '2023-10-01', monto_prestado: 600, interes: 0, monto_total: 600, tipo_deuda: 'Préstamo Personal', descripcion: 'Préstamo inicial', estado: 'Parcial', total_pagado: 200, saldo_pendiente: 400 },
+                    { id_deuda: 'DEU-102', id_acreedor: 'ACR-002', nombre_acreedor: 'Banco Credito', fecha_prestamo: '2023-10-15', monto_prestado: 2000, interes: 500, monto_total: 2500, tipo_deuda: 'Préstamo Personal', descripcion: 'Préstamo para equipos', estado: 'Pendiente', total_pagado: 0, saldo_pendiente: 2500 }
+                ];
+                state.pagos = [
+                    { id_pago: 'PAG-001', id_deuda: 'DEU-101', acreedor: 'Juan Pérez (Ejemplo)', fecha_pago: '2023-10-10', monto_pagado: 100, metodo_pago: 'Yape', numero_operacion: '09871', saldo_anterior: 600, saldo_restante: 500, voucher_numero: 'V-0001' },
+                    { id_pago: 'PAG-002', id_deuda: 'DEU-101', acreedor: 'Juan Pérez (Ejemplo)', fecha_pago: '2023-10-20', monto_pagado: 100, metodo_pago: 'Efectivo', numero_operacion: '', saldo_anterior: 500, saldo_restante: 400, voucher_numero: 'V-0002' }
+                ];
+            }
+        }
+
+        /* ================= RENDERS ================= */
+        
+        function renderDashboard() {
+            let deudaTotal = 0, totalPagado = 0, saldoPendiente = 0;
+            let activas = 0, canceladas = 0;
+
+            state.deudas.forEach(d => {
+                deudaTotal += parseFloat(d.monto_total);
+                totalPagado += parseFloat(d.total_pagado);
+                saldoPendiente += parseFloat(d.saldo_pendiente);
+                if(d.saldo_pendiente > 0) activas++;
+                else canceladas++;
+            });
+
+            document.getElementById('dash-deuda-total').textContent = formatDinero(deudaTotal);
+            document.getElementById('dash-total-pagado').textContent = formatDinero(totalPagado);
+            document.getElementById('dash-saldo-pendiente').textContent = formatDinero(saldoPendiente);
+            
+            document.getElementById('dash-activas').textContent = activas;
+            document.getElementById('dash-canceladas').textContent = canceladas;
+            document.getElementById('dash-acreedores').textContent = state.acreedores.length;
+
+            // Últimos pagos (max 5)
+            const tbody = document.getElementById('dash-pagos-body');
+            tbody.innerHTML = '';
+            const recientes = [...state.pagos].reverse().slice(0, 5);
+            
+            if(recientes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-slate-500">No hay pagos registrados</td></tr>`;
+                return;
+            }
+
+            recientes.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4">${formatFecha(p.fecha_pago)}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor}</td>
+                        <td class="px-6 py-4 text-slate-500">${p.id_deuda}</td>
+                        <td class="px-6 py-4 font-bold text-emerald-600">${formatDinero(p.monto_pagado)}</td>
+                        <td class="px-6 py-4">${p.metodo_pago}</td>
+                        <td class="px-6 py-4"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium border border-slate-200">${p.voucher_numero}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderAcreedores(filtro = '') {
+            const tbody = document.getElementById('table-acreedores');
+            tbody.innerHTML = '';
+            const f = filtro.toLowerCase();
+            
+            const filtrados = state.acreedores.filter(a => 
+                a.nombre.toLowerCase().includes(f) || a.dni.includes(f)
+            );
+
+            if(filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No se encontraron acreedores.</td></tr>`;
+                return;
+            }
+
+            filtrados.forEach(a => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-xs font-mono text-slate-500">${a.id_acreedor}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${a.nombre}</td>
+                        <td class="px-6 py-4 text-slate-600">${a.dni || '-'}</td>
+                        <td class="px-6 py-4 text-slate-600">${a.telefono || '-'}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="editarAcreedor('${a.id_acreedor}')" class="text-blue-500 hover:text-blue-700 mr-2" title="Editar"><i class="ph ph-pencil-simple text-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderDeudas() {
+            const tbody = document.getElementById('table-deudas');
+            tbody.innerHTML = '';
+
+            if(state.deudas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">No hay deudas registradas.</td></tr>`;
+                return;
+            }
+
+            state.deudas.forEach(d => {
+                const color = getEstadoColor(d.estado);
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-xs font-mono text-slate-500">${d.id_deuda}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${d.nombre_acreedor}</td>
+                        <td class="px-6 py-4 text-slate-600">${formatFecha(d.fecha_prestamo)}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${formatDinero(d.monto_total)}</td>
+                        <td class="px-6 py-4 text-emerald-600">${formatDinero(d.total_pagado)}</td>
+                        <td class="px-6 py-4 font-bold text-rose-600">${formatDinero(d.saldo_pendiente)}</td>
+                        <td class="px-6 py-4"><span class="${color} px-2.5 py-1 rounded-full text-xs font-medium">${d.estado}</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="irAPagar('${d.id_deuda}')" ${d.saldo_pendiente == 0 ? 'disabled class="text-slate-300"' : 'class="text-secondary hover:text-blue-800 font-medium"'} title="Abonar">
+                                <i class="ph ph-money text-lg align-middle"></i> Abonar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderPagosHistorial() {
+            const tbody = document.getElementById('table-pagos');
+            tbody.innerHTML = '';
+            
+            const reverso = [...state.pagos].reverse();
+            if(reverso.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">No hay pagos registrados.</td></tr>`;
+                return;
+            }
+
+            reverso.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">${p.voucher_numero}</span></td>
+                        <td class="px-6 py-4">${formatFecha(p.fecha_pago)}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor}</td>
+                        <td class="px-6 py-4 text-xs font-mono text-slate-500">${p.id_deuda}</td>
+                        <td class="px-6 py-4 font-bold text-emerald-600">${formatDinero(p.monto_pagado)}</td>
+                        <td class="px-6 py-4 text-slate-600">${formatDinero(p.saldo_restante)}</td>
+                        <td class="px-6 py-4 text-slate-600">${p.metodo_pago}</td>
+                        <td class="px-6 py-4">
+                            <button onclick='verVoucherHistorico(${JSON.stringify(p)})' class="text-secondary hover:text-blue-700 font-medium text-sm flex items-center gap-1">
+                                <i class="ph ph-receipt"></i> Ver
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        /* ================= BUSINESS LOGIC (CRUD) ================= */
+
+        // -- Acreedores --
+        async function guardarAcreedor() {
+            const id = document.getElementById('acr-id').value;
+            const nombre = document.getElementById('acr-nombre').value;
+            const nuevo = {
+                id_acreedor: id || generarID('ACR'),
+                nombre: nombre,
+                dni: document.getElementById('acr-dni').value,
+                telefono: document.getElementById('acr-telefono').value,
+                observaciones: document.getElementById('acr-obs').value
+            };
+
+            if (CONFIG.USE_MOCK_API) {
+                if(id) {
+                    const idx = state.acreedores.findIndex(a => a.id_acreedor === id);
+                    if(idx > -1) state.acreedores[idx] = nuevo;
+                } else {
+                    state.acreedores.push(nuevo);
+                }
+                showToast("Acreedor guardado con éxito");
+                closeModal('modal-acreedor');
+                actualizarVistas();
+            } else {
+                // Implementar fetch POST a GAS aquí
+                const btn = document.querySelector('#form-acreedor button[type="submit"]');
+                btn.textContent = 'Guardando...'; btn.disabled = true;
+                try {
+                    await fetch(CONFIG.GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'saveAcreedor', data: nuevo })
+                    });
+                    showToast("Acreedor guardado en Sheets");
+                    await cargarDatos(); // Recargar todo de Sheets
+                    closeModal('modal-acreedor');
+                } catch(e) {
+                    showToast("Error al guardar", "error");
+                } finally {
+                    btn.textContent = 'Guardar'; btn.disabled = false;
+                }
+            }
+        }
+
+        function editarAcreedor(id) {
+            const a = state.acreedores.find(x => x.id_acreedor === id);
+            if(!a) return;
+            document.getElementById('acr-id').value = a.id_acreedor;
+            document.getElementById('acr-nombre').value = a.nombre;
+            document.getElementById('acr-dni').value = a.dni;
+            document.getElementById('acr-telefono').value = a.telefono;
+            document.getElementById('acr-obs').value = a.observaciones;
+            document.getElementById('modal-acreedor-title').textContent = 'Editar Acreedor';
+            openModal('modal-acreedor');
+        }
+
+        // -- Deudas --
+        function llenarSelectAcreedoresModal() {
+            const sel = document.getElementById('deu-acreedor');
+            sel.innerHTML = '<option value="">Seleccione Acreedor...</option>';
+            state.acreedores.forEach(a => {
+                sel.innerHTML += `<option value="${a.id_acreedor}">${a.nombre}</option>`;
+            });
+        }
+
+        function calcularTotalDeuda() {
+            const prestado = parseFloat(document.getElementById('deu-monto').value) || 0;
+            const interes = parseFloat(document.getElementById('deu-interes').value) || 0;
+            document.getElementById('deu-total-calc').textContent = formatDinero(prestado + interes);
+        }
+
+        async function guardarDeuda() {
+            const idAcreedor = document.getElementById('deu-acreedor').value;
+            const acreedorObj = state.acreedores.find(a => a.id_acreedor === idAcreedor);
+            const prestado = parseFloat(document.getElementById('deu-monto').value) || 0;
+            const interes = parseFloat(document.getElementById('deu-interes').value) || 0;
+            const total = prestado + interes;
+
+            const nuevaDeuda = {
+                id_deuda: generarID('DEU'),
+                id_acreedor: idAcreedor,
+                nombre_acreedor: acreedorObj.nombre,
+                fecha_prestamo: document.getElementById('deu-fecha').value,
+                monto_prestado: prestado,
+                interes: interes,
+                monto_total: total,
+                tipo_deuda: document.getElementById('deu-tipo').value,
+                descripcion: document.getElementById('deu-desc').value,
+                estado: 'Pendiente',
+                total_pagado: 0,
+                saldo_pendiente: total
+            };
+
+            if (CONFIG.USE_MOCK_API) {
+                state.deudas.push(nuevaDeuda);
+                showToast("Deuda registrada con éxito");
+                closeModal('modal-deuda');
+                actualizarVistas();
+            } else {
+                 // Fetch POST a GAS
+                 try {
+                    await fetch(CONFIG.GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'saveDeuda', data: nuevaDeuda })
+                    });
+                    showToast("Deuda guardada");
+                    await cargarDatos();
+                    closeModal('modal-deuda');
+                } catch(e) {
+                    showToast("Error al guardar", "error");
+                }
+            }
+        }
+
+        // -- Pagos --
+        function llenarSelectDeudas() {
+            const sel = document.getElementById('pago-deuda');
+            sel.innerHTML = '<option value="">Seleccione una deuda activa...</option>';
+            // Solo deudas con saldo pendiente
+            const activas = state.deudas.filter(d => d.saldo_pendiente > 0);
+            activas.forEach(d => {
+                sel.innerHTML += `<option value="${d.id_deuda}">${d.nombre_acreedor} - ${d.descripcion} (Saldo: ${formatDinero(d.saldo_pendiente)})</option>`;
+            });
+        }
+
+        function irAPagar(idDeuda) {
+            switchView('pagos');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-nav'));
+            document.querySelector('[data-view="pagos"]').classList.add('active-nav');
+            
+            const sel = document.getElementById('pago-deuda');
+            sel.value = idDeuda;
+            actualizarInfoPago();
+        }
+
+        function actualizarInfoPago() {
+            const idDeuda = document.getElementById('pago-deuda').value;
+            const deuda = state.deudas.find(d => d.id_deuda === idDeuda);
+            
+            if(!deuda) {
+                document.getElementById('info-saldo-anterior').textContent = formatDinero(0);
+                document.getElementById('pago-saldo-anterior-val').value = 0;
+                document.getElementById('info-saldo-restante').textContent = formatDinero(0);
+                document.getElementById('pago-monto').value = '';
+                document.getElementById('pago-monto').max = '';
+                return;
+            }
+
+            document.getElementById('info-saldo-anterior').textContent = formatDinero(deuda.saldo_pendiente);
+            document.getElementById('pago-saldo-anterior-val').value = deuda.saldo_pendiente;
+            document.getElementById('pago-monto').max = deuda.saldo_pendiente; // Validar maximo
+            calcularSaldoRestante();
+        }
+
+        function calcularSaldoRestante() {
+            const saldoAnt = parseFloat(document.getElementById('pago-saldo-anterior-val').value) || 0;
+            const montoPagar = parseFloat(document.getElementById('pago-monto').value) || 0;
+            
+            if(montoPagar > saldoAnt) {
+                // Prevenir pagar más del saldo
+                document.getElementById('pago-monto').value = saldoAnt;
+                showToast("No puedes pagar más del saldo pendiente", "error");
+                calcularSaldoRestante();
+                return;
+            }
+
+            const restante = saldoAnt - montoPagar;
+            document.getElementById('info-saldo-restante').textContent = formatDinero(restante);
+            // Cambiar color si es 0
+            const restEl = document.getElementById('info-saldo-restante');
+            if(restante === 0) restEl.className = 'text-xl font-bold text-emerald-600';
+            else restEl.className = 'text-xl font-bold text-secondary';
+        }
+
+        async function registrarPago() {
+            const idDeuda = document.getElementById('pago-deuda').value;
+            const monto = parseFloat(document.getElementById('pago-monto').value);
+            const deuda = state.deudas.find(d => d.id_deuda === idDeuda);
+
+            if(!deuda || monto <= 0 || isNaN(monto)) {
+                showToast("Datos de pago inválidos", "error"); return;
+            }
+
+            // Cálculos exactos (Math.round para evitar errores de flotante JS)
+            const saldoAnterior = deuda.saldo_pendiente;
+            const nuevoSaldo = Math.round((saldoAnterior - monto) * 100) / 100;
+            const nuevoTotalPagado = Math.round((deuda.total_pagado + monto) * 100) / 100;
+            const estado = nuevoSaldo <= 0 ? 'Cancelada' : 'Parcial';
+
+            // Generar número de voucher (ej. V-0015)
+            const numVoucher = `V-${(state.pagos.length + 1).toString().padStart(4, '0')}`;
+            const fechaActual = new Date();
+
+            const nuevoPago = {
+                id_pago: generarID('PAG'),
+                id_deuda: idDeuda,
+                id_acreedor: deuda.id_acreedor,
+                acreedor: deuda.nombre_acreedor, // Cache para busquedas rapidas
+                fecha_pago: document.getElementById('pago-fecha').value,
+                monto_pagado: monto,
+                metodo_pago: document.getElementById('pago-metodo').value,
+                numero_operacion: document.getElementById('pago-operacion').value || 'S/N',
+                saldo_anterior: saldoAnterior,
+                saldo_restante: nuevoSaldo,
+                observacion: document.getElementById('pago-observacion').value,
+                voucher_numero: numVoucher,
+                fecha_hora_str: fechaActual.toLocaleString('es-PE')
+            };
+
+            if (CONFIG.USE_MOCK_API) {
+                // Actualizar DB en memoria
+                state.pagos.push(nuevoPago);
+                deuda.total_pagado = nuevoTotalPagado;
+                deuda.saldo_pendiente = nuevoSaldo;
+                deuda.estado = estado;
+
+                showToast("Pago registrado exitosamente");
+                document.getElementById('form-pago').reset();
+                actualizarInfoPago();
+                actualizarVistas();
+                mostrarVoucherGenerado(nuevoPago, deuda);
+            } else {
+                // Lógica de GAS
+                const btn = document.querySelector('#form-pago button[type="submit"]');
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Procesando...'; btn.disabled = true;
+                try {
+                    await fetch(CONFIG.GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            action: 'savePago', 
+                            pago: nuevoPago,
+                            updateDeuda: { id: idDeuda, total_pagado: nuevoTotalPagado, saldo_pendiente: nuevoSaldo, estado: estado }
+                        })
+                    });
+                    showToast("Pago guardado y sincronizado");
+                    await cargarDatos();
+                    document.getElementById('form-pago').reset();
+                    mostrarVoucherGenerado(nuevoPago, deuda);
+                } catch(e) {
+                    showToast("Error al conectar con Sheets", "error");
+                } finally {
+                    btn.innerHTML = '<i class="ph ph-check-circle text-xl"></i> Procesar Pago'; btn.disabled = false;
+                }
+            }
+        }
+
+        /* ================= VOUCHER GENERATION ================= */
+        function mostrarVoucherGenerado(pago, deudaObj = null) {
+            state.currentVoucher = pago; // Guardar referencia para WhatsApp
+            
+            // Llenar datos visuales
+            document.getElementById('v-monto').textContent = formatDinero(pago.monto_pagado);
+            document.getElementById('v-numero').textContent = pago.voucher_numero;
+            document.getElementById('v-fecha').textContent = pago.fecha_hora_str || formatFecha(pago.fecha_pago);
+            document.getElementById('v-acreedor').textContent = pago.acreedor;
+            document.getElementById('v-deuda-id').textContent = pago.id_deuda;
+            document.getElementById('v-metodo').textContent = pago.metodo_pago;
+            document.getElementById('v-operacion').textContent = pago.numero_operacion;
+            document.getElementById('v-saldo-ant').textContent = formatDinero(pago.saldo_anterior);
+            document.getElementById('v-saldo-rest').textContent = formatDinero(pago.saldo_restante);
+            document.getElementById('v-obs').textContent = pago.observacion ? `Nota: ${pago.observacion}` : '';
+
+            // Mostrar Modal
+            openModal('modal-voucher');
+        }
+
+        function verVoucherHistorico(pago) {
+            mostrarVoucherGenerado(pago);
+        }
+
+        function cerrarVoucher() {
+            closeModal('modal-voucher');
+            state.currentVoucher = null;
+        }
+
+        function descargarVoucher() {
+            const node = document.getElementById('voucher-print-area');
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Generando...';
+            
+            // Usar html2canvas
+            html2canvas(node, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `Voucher_${state.currentVoucher.voucher_numero}.png`;
+                link.href = imgData;
+                link.click();
+                btn.innerHTML = originalHtml;
+                showToast("Voucher descargado");
+            }).catch(err => {
+                console.error(err);
+                showToast("Error al generar imagen", "error");
+                btn.innerHTML = originalHtml;
+            });
+        }
+
+        function compartirWhatsApp() {
+            const v = state.currentVoucher;
+            if(!v) return;
+
+            // Buscar teléfono del acreedor (si existe en state)
+            const acreedorObj = state.acreedores.find(a => a.id_acreedor === v.id_acreedor);
+            const telefono = acreedorObj ? acreedorObj.telefono : '';
+
+            // Construir texto
+            const texto = `✅ *COMPROBANTE DE PAGO*\n\nHola, se realizó un abono correspondiente a la deuda *${v.id_deuda}*.\n\n` +
+                          `💰 *Monto Pagado:* ${formatDinero(v.monto_pagado)}\n` +
+                          `💳 *Método:* ${v.metodo_pago}\n` +
+                          `📄 *N° Operación:* ${v.numero_operacion}\n` +
+                          `📊 *Saldo Pendiente:* ${formatDinero(v.saldo_restante)}\n` +
+                          `🔖 *N° Voucher:* ${v.voucher_numero}\n\n` +
+                          `_Generado por ${CONFIG.empresa}_`;
+
+            const url = `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+
+    </script>
+</body>
+</html>
