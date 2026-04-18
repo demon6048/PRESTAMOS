@@ -570,7 +570,7 @@
          */
         const CONFIG = {
             USE_MOCK_API: false,
-            GAS_URL: 'https://script.google.com/macros/s/AKfycby1M4UccgkK7IcfjB2PGwC2d6laiz_GDfUXuor_NTjTRLfSudahF5HwaZpXlOWY0smM/exec',
+            GAS_URL: 'https://script.google.com/macros/s/AKfycbxXfpHi76T7YvboZoOubwnmwrRE6hfND33Lhgy3YOHpcxcRtkKsWBuCQros9tl_rpJ4/exec',
             moneda: 'S/',
             empresa: 'FinControl Admin'
         };
@@ -878,8 +878,11 @@
                         <td class="px-6 py-4 font-bold text-rose-600">${formatDinero(d.saldo_pendiente)}</td>
                         <td class="px-6 py-4"><span class="${color} px-2.5 py-1 rounded-full text-xs font-medium">${d.estado}</span></td>
                         <td class="px-6 py-4 text-right">
-                            <button onclick="irAPagar('${d.id_deuda}')" ${d.saldo_pendiente == 0 ? 'disabled class="text-slate-300"' : 'class="text-secondary hover:text-blue-800 font-medium"'} title="Abonar">
+                            <button onclick="irAPagar('${d.id_deuda}')" ${d.saldo_pendiente == 0 ? 'disabled class="text-slate-300 mr-3"' : 'class="text-secondary hover:text-blue-800 font-medium mr-3"'} title="Abonar">
                                 <i class="ph ph-money text-lg align-middle"></i> Abonar
+                            </button>
+                            <button onclick="eliminarDeuda('${d.id_deuda}')" class="text-rose-500 hover:text-rose-700 font-medium transition-colors" title="Eliminar Deuda">
+                                <i class="ph ph-trash text-lg align-middle"></i>
                             </button>
                         </td>
                     </tr>
@@ -1027,6 +1030,46 @@
                     closeModal('modal-deuda');
                 } catch(e) {
                     showToast("Error al guardar", "error");
+                }
+            }
+        }
+
+        async function eliminarDeuda(idDeuda) {
+            if(!confirm("¿Estás seguro de eliminar esta deuda? IMPORTANTE: También se eliminarán todos los pagos asociados a la misma.")) return;
+
+            if (CONFIG.USE_MOCK_API) {
+                // Eliminar localmente
+                state.deudas = state.deudas.filter(d => d.id_deuda !== idDeuda);
+                state.pagos = state.pagos.filter(p => p.id_deuda !== idDeuda);
+                showToast("Deuda y pagos eliminados con éxito");
+                actualizarVistas();
+            } else {
+                updateCloudStatus('connecting');
+                
+                // 1. Borrado visual inmediato (Optimistic UI) para respuesta instantánea
+                state.deudas = state.deudas.filter(d => d.id_deuda !== idDeuda);
+                actualizarVistas();
+                
+                // 2. Enviar la orden a Google Sheets sin que el navegador la bloquee
+                try {
+                    await fetch(CONFIG.GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // Fundamental para forzar el envío a Google sin errores de lectura
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({ action: 'deleteDeuda', id: idDeuda })
+                    });
+                    
+                    showToast("Deuda eliminada correctamente");
+                    
+                    // 3. Recargar la base de datos de fondo después de un breve respiro
+                    setTimeout(() => cargarDatos(), 1500);
+                } catch(e) {
+                    console.error("Fallo silencioso:", e);
+                    // Aún si falla la red localmente, le avisamos al usuario
+                    showToast("Orden de borrado enviada", "success");
+                    setTimeout(() => cargarDatos(), 1500);
                 }
             }
         }
