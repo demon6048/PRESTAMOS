@@ -96,6 +96,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" data-view="responsables" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                        <i class="ph ph-user-circle text-lg"></i> Responsables
+                    </a>
+                </li>
+                <li>
                     <a href="#" data-view="deudas" class="nav-link flex items-center gap-3 px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
                         <i class="ph ph-file-text text-lg"></i> Deudas y Préstamos
                     </a>
@@ -248,6 +253,32 @@
                 </div>
             </div>
 
+            <!-- VIEW: RESPONSABLES -->
+            <div id="view-responsables" class="view-section hide">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Responsables de Pago</h2>
+                    <button onclick="openModal('modal-responsable')" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
+                        <i class="ph ph-plus-circle text-lg"></i> Nuevo Responsable
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-3xl">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-3 font-medium">ID</th>
+                                    <th class="px-6 py-3 font-medium">Nombre del Responsable</th>
+                                    <th class="px-6 py-3 font-medium">Teléfono / WhatsApp</th>
+                                    <th class="px-6 py-3 font-medium text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-responsables" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: DEUDAS -->
             <div id="view-deudas" class="view-section hide">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -327,6 +358,13 @@
                                 <label class="block text-sm font-medium text-slate-700 mb-1">N° de Operación (Opcional)</label>
                                 <input type="text" id="pago-operacion" class="w-full p-2.5 border border-slate-300 rounded-lg" placeholder="Ej. 123456789">
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Responsable del Pago</label>
+                                <select id="pago-responsable" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary" required>
+                                    <option value="">Seleccione responsable...</option>
+                                    <!-- Opciones JS -->
+                                </select>
+                            </div>
                             <div class="col-span-1 md:col-span-2">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
                                 <input type="text" id="pago-observacion" class="w-full p-2.5 border border-slate-300 rounded-lg" placeholder="Detalle adicional del pago...">
@@ -355,6 +393,7 @@
                                     <th class="px-6 py-3 font-medium">Fecha</th>
                                     <th class="px-6 py-3 font-medium">Acreedor</th>
                                     <th class="px-6 py-3 font-medium">Deuda ID</th>
+                                    <th class="px-6 py-3 font-medium">Responsable</th>
                                     <th class="px-6 py-3 font-medium text-emerald-600">Monto Abonado</th>
                                     <th class="px-6 py-3 font-medium">Saldo Rest.</th>
                                     <th class="px-6 py-3 font-medium">Método</th>
@@ -402,6 +441,35 @@
                     </div>
                     <div class="mt-6 flex justify-end gap-3">
                         <button type="button" onclick="closeModal('modal-acreedor')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800 font-medium transition-colors">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Responsable -->
+    <div id="modal-responsable" class="fixed inset-0 z-50 flex items-center justify-center hide glass-modal px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-up">
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-lg text-slate-800">Nuevo Responsable</h3>
+                <button onclick="closeModal('modal-responsable')" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <form id="form-responsable" onsubmit="event.preventDefault(); guardarResponsable();">
+                    <input type="hidden" id="resp-id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Completo o Alias</label>
+                            <input type="text" id="resp-nombre" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">WhatsApp / Teléfono</label>
+                            <input type="tel" id="resp-telefono" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary" placeholder="Ej. 987654321">
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" onclick="closeModal('modal-responsable')" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancelar</button>
                         <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800 font-medium transition-colors">Guardar</button>
                     </div>
                 </form>
@@ -505,12 +573,16 @@
                             <span class="font-medium text-slate-800" id="v-fecha">--</span>
                         </div>
                         <div class="flex justify-between border-b border-slate-100 pb-2">
-                            <span class="text-slate-500">Acreedor:</span>
+                            <span class="text-slate-500">Pagado a (Acreedor):</span>
                             <span class="font-bold text-slate-800" id="v-acreedor">--</span>
                         </div>
                         <div class="flex justify-between border-b border-slate-100 pb-2">
                             <span class="text-slate-500">Cód. Deuda:</span>
                             <span class="font-medium text-slate-800" id="v-deuda-id">--</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 pb-2">
+                            <span class="text-slate-500">Pagado por:</span>
+                            <span class="font-bold text-slate-800" id="v-responsable">--</span>
                         </div>
                         <div class="flex justify-between border-b border-slate-100 pb-2">
                             <span class="text-slate-500">Método de Pago:</span>
@@ -569,8 +641,8 @@
          * para usar la base de datos real en Google Sheets.
          */
         const CONFIG = {
-            USE_MOCK_API: false,
-            GAS_URL: 'https://script.google.com/macros/s/AKfycbxXfpHi76T7YvboZoOubwnmwrRE6hfND33Lhgy3YOHpcxcRtkKsWBuCQros9tl_rpJ4/exec',
+            USE_MOCK_API: false, // <-- En FALSE para usar tu base de datos real
+            GAS_URL: 'https://script.google.com/macros/s/AKfycbwNt9iOpmu1ldZpEPievfKElQBHS7NeH10O4jIpx6VilPoCDq59PN14DWST5e2U__za/exec',
             moneda: 'S/',
             empresa: 'FinControl Admin'
         };
@@ -578,9 +650,10 @@
         // Estado Global en Memoria
         let state = {
             acreedores: [],
+            responsables: [],
             deudas: [],
             pagos: [],
-            currentVoucher: null // Para compartir
+            currentVoucher: null
         };
 
         // Inicialización
@@ -591,33 +664,24 @@
 
         /* ================= UI & NAVIGATION ================= */
         function initUI() {
-            // Fecha actual
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-PE', options);
             document.getElementById('pago-fecha').valueAsDate = new Date();
             document.getElementById('deu-fecha').valueAsDate = new Date();
 
-            // Navegación Sidebar
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     const view = link.getAttribute('data-view');
                     switchView(view);
-                    
-                    // Update active class
                     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-nav'));
                     link.classList.add('active-nav');
-                    
-                    // Close sidebar on mobile
                     if(window.innerWidth < 768) toggleSidebar();
                 });
             });
 
-            // Mobile Sidebar Toggle
             document.getElementById('open-sidebar').addEventListener('click', toggleSidebar);
             document.getElementById('close-sidebar').addEventListener('click', toggleSidebar);
-
-            // Búsqueda en vivo
             document.getElementById('search-acreedores').addEventListener('input', (e) => renderAcreedores(e.target.value));
         }
 
@@ -633,6 +697,7 @@
             const titles = {
                 'dashboard': 'Dashboard General',
                 'acreedores': 'Gestión de Acreedores',
+                'responsables': 'Responsables de Pago',
                 'deudas': 'Deudas y Préstamos',
                 'pagos': 'Registro de Pagos',
                 'historial': 'Historial de Movimientos'
@@ -645,6 +710,10 @@
         function openModal(id) {
             document.getElementById(id).classList.remove('hide');
             if(id === 'modal-acreedor') document.getElementById('form-acreedor').reset();
+            if(id === 'modal-responsable') {
+                document.getElementById('form-responsable').reset();
+                document.getElementById('resp-id').value = '';
+            }
             if(id === 'modal-deuda') {
                 document.getElementById('form-deuda').reset();
                 document.getElementById('deu-fecha').valueAsDate = new Date();
@@ -664,15 +733,11 @@
             toast.innerHTML = `<i class="ph ${icon} text-lg"></i> <span class="text-sm font-medium">${message}</span>`;
             
             container.appendChild(toast);
-            
-            // Animate in
             setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
-            
-            // Remove after 3s
             setTimeout(() => {
                 toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 4500); // 4.5 segundos para que de tiempo a leer si hay error
         }
 
         /* ================= ESTADO DE NUBE ================= */
@@ -681,7 +746,6 @@
             const text = document.getElementById('status-text');
             const container = document.getElementById('cloud-status');
 
-            // Reset classes
             dot.className = 'w-2 h-2 rounded-full';
             container.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors';
 
@@ -710,17 +774,17 @@
         }
 
         /* ================= HELPERS & FORMATTERS ================= */
-        const formatDinero = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto || 0);
+        const formatDinero = (monto) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(monto) || 0);
         const formatFecha = (fechaStr) => {
             if(!fechaStr) return '--';
             const d = new Date(fechaStr);
-            // Ajuste simple para evitar desfase de zona horaria al mostrar fecha simple
             return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
         };
         const generarID = (prefix) => `${prefix}-${Date.now().toString().slice(-6)}`;
 
         function getEstadoColor(estado) {
-            switch(estado.toLowerCase()) {
+            if (!estado) return 'bg-slate-100 text-slate-700'; // Previene errores si el estado está vacío
+            switch(String(estado).trim().toLowerCase()) {
                 case 'activa': case 'pendiente': return 'bg-amber-100 text-amber-700';
                 case 'cancelada': return 'bg-emerald-100 text-emerald-700';
                 case 'parcial': return 'bg-blue-100 text-blue-700';
@@ -728,57 +792,80 @@
             }
         }
 
-        /* ================= DATA FETCHING (MOCK OR REAL API) ================= */
+        /* ================= DATA FETCHING ================= */
         async function cargarDatos() {
             updateCloudStatus('connecting');
             try {
                 if (CONFIG.USE_MOCK_API) {
                     cargarDatosMock();
                     updateCloudStatus('local');
+                    actualizarVistas();
                 } else {
-                    // Fetch real desde GAS
-                    const res = await fetch(`${CONFIG.GAS_URL}?action=getAll`);
-                    const data = await res.json();
+                    // LLamada limpia y resistente a bloqueos locales
+                    const cleanUrl = `${CONFIG.GAS_URL.trim()}?action=getAll`;
+                    const res = await fetch(cleanUrl);
+                    
+                    const textResponse = await res.text();
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(textResponse);
+                    } catch(err) {
+                        console.error("Respuesta fallida de Google:", textResponse.substring(0, 150) + "...");
+                        showToast("Error de Permisos en Google. Revisa que el acceso sea 'Cualquier persona'", "error");
+                        updateCloudStatus('error');
+                        return;
+                    }
+
                     if(data.status === 'success') {
                         state.acreedores = data.acreedores || [];
+                        state.responsables = data.responsables || [];
                         state.deudas = data.deudas || [];
                         state.pagos = data.pagos || [];
+                        
                         updateCloudStatus('connected');
+                        actualizarVistas();
                     } else {
-                        throw new Error("Error de servidor");
+                        throw new Error(data.message || "Error interno del servidor Google");
                     }
                 }
-                actualizarVistas();
             } catch (error) {
-                console.error("Error cargando datos:", error);
-                showToast("Error al cargar la base de datos", "error");
+                console.error("Detalle del error:", error);
+                // Si el navegador bloquea la consulta, le informamos al usuario
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                     showToast("Tu navegador bloqueó la conexión (Posiblemente lo abriste desde tu carpeta local en vez de internet).", "error");
+                } else {
+                     showToast(`Fallo de lectura: ${error.message}`, "error");
+                }
                 updateCloudStatus('error');
             }
         }
 
         function actualizarVistas() {
-            renderDashboard();
-            renderAcreedores();
-            renderDeudas();
-            renderPagosHistorial();
+            try {
+                renderDashboard();
+                renderAcreedores();
+                renderResponsables();
+                renderDeudas();
+                renderPagosHistorial();
+                llenarSelectResponsables();
+            } catch(e) {
+                console.error("Error renderizando la interfaz:", e);
+                showToast("Se cargaron los datos pero hubo un error mostrándolos en pantalla.", "error");
+            }
         }
 
         /* ================= MOCK DATA GENERATOR ================= */
         function cargarDatosMock() {
-            // Generar datos ficticios para el requerimiento exacto: S/ 600 y S/ 2000
             if(state.acreedores.length === 0) {
                 state.acreedores = [
-                    { id_acreedor: 'ACR-001', nombre: 'Juan Pérez (Ejemplo)', dni: '12345678', telefono: '987654321', observaciones: 'Prestamista habitual' },
-                    { id_acreedor: 'ACR-002', nombre: 'Banco Credito', dni: '20123456789', telefono: '', observaciones: 'Préstamo personal' }
+                    { id_acreedor: 'ACR-001', nombre: 'Juan Pérez (Ejemplo)', dni: '12345678', telefono: '987654321', observaciones: 'Prestamista habitual' }
                 ];
-                state.deudas = [
-                    { id_deuda: 'DEU-101', id_acreedor: 'ACR-001', nombre_acreedor: 'Juan Pérez (Ejemplo)', fecha_prestamo: '2023-10-01', monto_prestado: 600, interes: 0, monto_total: 600, tipo_deuda: 'Préstamo Personal', descripcion: 'Préstamo inicial', estado: 'Parcial', total_pagado: 200, saldo_pendiente: 400 },
-                    { id_deuda: 'DEU-102', id_acreedor: 'ACR-002', nombre_acreedor: 'Banco Credito', fecha_prestamo: '2023-10-15', monto_prestado: 2000, interes: 500, monto_total: 2500, tipo_deuda: 'Préstamo Personal', descripcion: 'Préstamo para equipos', estado: 'Pendiente', total_pagado: 0, saldo_pendiente: 2500 }
+                state.responsables = [
+                    { id_responsable: 'RSP-001', nombre: 'Tú (Principal)', telefono: '999888777' }
                 ];
-                state.pagos = [
-                    { id_pago: 'PAG-001', id_deuda: 'DEU-101', acreedor: 'Juan Pérez (Ejemplo)', fecha_pago: '2023-10-10', monto_pagado: 100, metodo_pago: 'Yape', numero_operacion: '09871', saldo_anterior: 600, saldo_restante: 500, voucher_numero: 'V-0001' },
-                    { id_pago: 'PAG-002', id_deuda: 'DEU-101', acreedor: 'Juan Pérez (Ejemplo)', fecha_pago: '2023-10-20', monto_pagado: 100, metodo_pago: 'Efectivo', numero_operacion: '', saldo_anterior: 500, saldo_restante: 400, voucher_numero: 'V-0002' }
-                ];
+                state.deudas = [];
+                state.pagos = [];
             }
         }
 
@@ -789,10 +876,10 @@
             let activas = 0, canceladas = 0;
 
             state.deudas.forEach(d => {
-                deudaTotal += parseFloat(d.monto_total);
-                totalPagado += parseFloat(d.total_pagado);
-                saldoPendiente += parseFloat(d.saldo_pendiente);
-                if(d.saldo_pendiente > 0) activas++;
+                deudaTotal += parseFloat(d.monto_total) || 0;
+                totalPagado += parseFloat(d.total_pagado) || 0;
+                saldoPendiente += parseFloat(d.saldo_pendiente) || 0;
+                if(parseFloat(d.saldo_pendiente) > 0) activas++;
                 else canceladas++;
             });
 
@@ -804,7 +891,6 @@
             document.getElementById('dash-canceladas').textContent = canceladas;
             document.getElementById('dash-acreedores').textContent = state.acreedores.length;
 
-            // Últimos pagos (max 5)
             const tbody = document.getElementById('dash-pagos-body');
             tbody.innerHTML = '';
             const recientes = [...state.pagos].reverse().slice(0, 5);
@@ -818,10 +904,10 @@
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50">
                         <td class="px-6 py-4">${formatFecha(p.fecha_pago)}</td>
-                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor || '-'}</td>
                         <td class="px-6 py-4 text-slate-500">${p.id_deuda}</td>
                         <td class="px-6 py-4 font-bold text-emerald-600">${formatDinero(p.monto_pagado)}</td>
-                        <td class="px-6 py-4">${p.metodo_pago}</td>
+                        <td class="px-6 py-4">${p.metodo_pago || '-'}</td>
                         <td class="px-6 py-4"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium border border-slate-200">${p.voucher_numero}</span></td>
                     </tr>
                 `;
@@ -834,7 +920,7 @@
             const f = filtro.toLowerCase();
             
             const filtrados = state.acreedores.filter(a => 
-                a.nombre.toLowerCase().includes(f) || a.dni.includes(f)
+                (a.nombre && a.nombre.toLowerCase().includes(f)) || (a.dni && String(a.dni).includes(f))
             );
 
             if(filtrados.length === 0) {
@@ -857,6 +943,32 @@
             });
         }
 
+        function renderResponsables() {
+            const tbody = document.getElementById('table-responsables');
+            tbody.innerHTML = '';
+            
+            if(state.responsables.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No se encontraron responsables.</td></tr>`;
+                return;
+            }
+
+            state.responsables.forEach(r => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-xs font-mono text-slate-500">${r.id_responsable}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${r.nombre}</td>
+                        <td class="px-6 py-4 text-slate-600">${r.telefono || '-'}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="editarResponsable('${r.id_responsable}')" class="text-blue-500 hover:text-blue-700 mr-2" title="Editar"><i class="ph ph-pencil-simple text-lg"></i></button>
+                            <button onclick="eliminarResponsable('${r.id_responsable}')" class="text-rose-500 hover:text-rose-700 font-medium transition-colors" title="Eliminar">
+                                <i class="ph ph-trash text-lg align-middle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
         function renderDeudas() {
             const tbody = document.getElementById('table-deudas');
             tbody.innerHTML = '';
@@ -871,14 +983,14 @@
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-4 text-xs font-mono text-slate-500">${d.id_deuda}</td>
-                        <td class="px-6 py-4 font-medium text-slate-800">${d.nombre_acreedor}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${d.nombre_acreedor || '-'}</td>
                         <td class="px-6 py-4 text-slate-600">${formatFecha(d.fecha_prestamo)}</td>
                         <td class="px-6 py-4 font-medium text-slate-800">${formatDinero(d.monto_total)}</td>
                         <td class="px-6 py-4 text-emerald-600">${formatDinero(d.total_pagado)}</td>
                         <td class="px-6 py-4 font-bold text-rose-600">${formatDinero(d.saldo_pendiente)}</td>
-                        <td class="px-6 py-4"><span class="${color} px-2.5 py-1 rounded-full text-xs font-medium">${d.estado}</span></td>
+                        <td class="px-6 py-4"><span class="${color} px-2.5 py-1 rounded-full text-xs font-medium">${d.estado || '-'}</span></td>
                         <td class="px-6 py-4 text-right">
-                            <button onclick="irAPagar('${d.id_deuda}')" ${d.saldo_pendiente == 0 ? 'disabled class="text-slate-300 mr-3"' : 'class="text-secondary hover:text-blue-800 font-medium mr-3"'} title="Abonar">
+                            <button onclick="irAPagar('${d.id_deuda}')" ${parseFloat(d.saldo_pendiente) <= 0 ? 'disabled class="text-slate-300 mr-3"' : 'class="text-secondary hover:text-blue-800 font-medium mr-3"'} title="Abonar">
                                 <i class="ph ph-money text-lg align-middle"></i> Abonar
                             </button>
                             <button onclick="eliminarDeuda('${d.id_deuda}')" class="text-rose-500 hover:text-rose-700 font-medium transition-colors" title="Eliminar Deuda">
@@ -896,7 +1008,7 @@
             
             const reverso = [...state.pagos].reverse();
             if(reverso.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">No hay pagos registrados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">No hay pagos registrados.</td></tr>`;
                 return;
             }
 
@@ -905,11 +1017,12 @@
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-4"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">${p.voucher_numero}</span></td>
                         <td class="px-6 py-4">${formatFecha(p.fecha_pago)}</td>
-                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${p.acreedor || '-'}</td>
                         <td class="px-6 py-4 text-xs font-mono text-slate-500">${p.id_deuda}</td>
+                        <td class="px-6 py-4 text-slate-700 font-medium">${p.responsable_pago || '-'}</td>
                         <td class="px-6 py-4 font-bold text-emerald-600">${formatDinero(p.monto_pagado)}</td>
                         <td class="px-6 py-4 text-slate-600">${formatDinero(p.saldo_restante)}</td>
-                        <td class="px-6 py-4 text-slate-600">${p.metodo_pago}</td>
+                        <td class="px-6 py-4 text-slate-600">${p.metodo_pago || '-'}</td>
                         <td class="px-6 py-4">
                             <button onclick='verVoucherHistorico(${JSON.stringify(p)})' class="text-secondary hover:text-blue-700 font-medium text-sm flex items-center gap-1">
                                 <i class="ph ph-receipt"></i> Ver
@@ -922,7 +1035,6 @@
 
         /* ================= BUSINESS LOGIC (CRUD) ================= */
 
-        // -- Acreedores --
         async function guardarAcreedor() {
             const id = document.getElementById('acr-id').value;
             const nombre = document.getElementById('acr-nombre').value;
@@ -945,19 +1057,18 @@
                 closeModal('modal-acreedor');
                 actualizarVistas();
             } else {
-                // Implementar fetch POST a GAS aquí
                 const btn = document.querySelector('#form-acreedor button[type="submit"]');
                 btn.textContent = 'Guardando...'; btn.disabled = true;
                 try {
-                    await fetch(CONFIG.GAS_URL, {
+                    await fetch(CONFIG.GAS_URL.trim(), {
                         method: 'POST',
                         body: JSON.stringify({ action: 'saveAcreedor', data: nuevo })
                     });
                     showToast("Acreedor guardado en Sheets");
-                    await cargarDatos(); // Recargar todo de Sheets
+                    await cargarDatos(); 
                     closeModal('modal-acreedor');
                 } catch(e) {
-                    showToast("Error al guardar", "error");
+                    showToast("Error al guardar en la nube", "error");
                 } finally {
                     btn.textContent = 'Guardar'; btn.disabled = false;
                 }
@@ -969,16 +1080,100 @@
             if(!a) return;
             document.getElementById('acr-id').value = a.id_acreedor;
             document.getElementById('acr-nombre').value = a.nombre;
-            document.getElementById('acr-dni').value = a.dni;
-            document.getElementById('acr-telefono').value = a.telefono;
-            document.getElementById('acr-obs').value = a.observaciones;
+            document.getElementById('acr-dni').value = a.dni || '';
+            document.getElementById('acr-telefono').value = a.telefono || '';
+            document.getElementById('acr-obs').value = a.observaciones || '';
             document.getElementById('modal-acreedor-title').textContent = 'Editar Acreedor';
             openModal('modal-acreedor');
         }
 
-        // -- Deudas --
+        async function guardarResponsable() {
+            const id = document.getElementById('resp-id').value;
+            const nombre = document.getElementById('resp-nombre').value;
+            const telefono = document.getElementById('resp-telefono').value;
+            const nuevo = {
+                id_responsable: id || generarID('RSP'),
+                nombre: nombre,
+                telefono: telefono
+            };
+
+            if (CONFIG.USE_MOCK_API) {
+                if(id) {
+                    const idx = state.responsables.findIndex(r => r.id_responsable === id);
+                    if(idx > -1) state.responsables[idx] = nuevo;
+                } else {
+                    state.responsables.push(nuevo);
+                }
+                showToast("Responsable guardado con éxito");
+                closeModal('modal-responsable');
+                actualizarVistas();
+            } else {
+                const btn = document.querySelector('#form-responsable button[type="submit"]');
+                btn.textContent = 'Guardando...'; btn.disabled = true;
+                try {
+                    await fetch(CONFIG.GAS_URL.trim(), {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'saveResponsable', data: nuevo })
+                    });
+                    showToast("Responsable guardado");
+                    await cargarDatos();
+                    closeModal('modal-responsable');
+                } catch(e) {
+                    showToast("Error al guardar responsable", "error");
+                } finally {
+                    btn.textContent = 'Guardar'; btn.disabled = false;
+                }
+            }
+        }
+
+        function editarResponsable(id) {
+            const r = state.responsables.find(x => x.id_responsable === id);
+            if(!r) return;
+            document.getElementById('resp-id').value = r.id_responsable;
+            document.getElementById('resp-nombre').value = r.nombre;
+            document.getElementById('resp-telefono').value = r.telefono || '';
+            document.getElementById('modal-responsable').querySelector('h3').textContent = 'Editar Responsable';
+            openModal('modal-responsable');
+        }
+
+        async function eliminarResponsable(id) {
+            if(!confirm("¿Seguro que deseas eliminar este responsable?")) return;
+            if (CONFIG.USE_MOCK_API) {
+                state.responsables = state.responsables.filter(r => r.id_responsable !== id);
+                showToast("Responsable eliminado");
+                actualizarVistas();
+            } else {
+                updateCloudStatus('connecting');
+                state.responsables = state.responsables.filter(r => r.id_responsable !== id);
+                actualizarVistas();
+                try {
+                    await fetch(CONFIG.GAS_URL.trim(), {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ action: 'deleteResponsable', id: id })
+                    });
+                    showToast("Orden enviada", "success");
+                    setTimeout(() => cargarDatos(), 1500);
+                } catch(e) {
+                    showToast("Error al eliminar", "error");
+                }
+            }
+        }
+
+        function llenarSelectResponsables() {
+            const sel = document.getElementById('pago-responsable');
+            if(!sel) return;
+            const actualVal = sel.value; 
+            sel.innerHTML = '<option value="">Seleccione responsable...</option>';
+            state.responsables.forEach(r => {
+                sel.innerHTML += `<option value="${r.nombre}">${r.nombre}</option>`;
+            });
+            if(actualVal) sel.value = actualVal; 
+        }
+
         function llenarSelectAcreedoresModal() {
             const sel = document.getElementById('deu-acreedor');
+            if(!sel) return;
             sel.innerHTML = '<option value="">Seleccione Acreedor...</option>';
             state.acreedores.forEach(a => {
                 sel.innerHTML += `<option value="${a.id_acreedor}">${a.nombre}</option>`;
@@ -1001,7 +1196,7 @@
             const nuevaDeuda = {
                 id_deuda: generarID('DEU'),
                 id_acreedor: idAcreedor,
-                nombre_acreedor: acreedorObj.nombre,
+                nombre_acreedor: acreedorObj ? acreedorObj.nombre : 'Desconocido',
                 fecha_prestamo: document.getElementById('deu-fecha').value,
                 monto_prestado: prestado,
                 interes: interes,
@@ -1019,9 +1214,8 @@
                 closeModal('modal-deuda');
                 actualizarVistas();
             } else {
-                 // Fetch POST a GAS
                  try {
-                    await fetch(CONFIG.GAS_URL, {
+                    await fetch(CONFIG.GAS_URL.trim(), {
                         method: 'POST',
                         body: JSON.stringify({ action: 'saveDeuda', data: nuevaDeuda })
                     });
@@ -1029,7 +1223,7 @@
                     await cargarDatos();
                     closeModal('modal-deuda');
                 } catch(e) {
-                    showToast("Error al guardar", "error");
+                    showToast("Error al guardar la deuda", "error");
                 }
             }
         }
@@ -1038,48 +1232,35 @@
             if(!confirm("¿Estás seguro de eliminar esta deuda? IMPORTANTE: También se eliminarán todos los pagos asociados a la misma.")) return;
 
             if (CONFIG.USE_MOCK_API) {
-                // Eliminar localmente
                 state.deudas = state.deudas.filter(d => d.id_deuda !== idDeuda);
                 state.pagos = state.pagos.filter(p => p.id_deuda !== idDeuda);
                 showToast("Deuda y pagos eliminados con éxito");
                 actualizarVistas();
             } else {
                 updateCloudStatus('connecting');
-                
-                // 1. Borrado visual inmediato (Optimistic UI) para respuesta instantánea
                 state.deudas = state.deudas.filter(d => d.id_deuda !== idDeuda);
                 actualizarVistas();
                 
-                // 2. Enviar la orden a Google Sheets sin que el navegador la bloquee
                 try {
-                    await fetch(CONFIG.GAS_URL, {
+                    await fetch(CONFIG.GAS_URL.trim(), {
                         method: 'POST',
-                        mode: 'no-cors', // Fundamental para forzar el envío a Google sin errores de lectura
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
-                        },
+                        mode: 'no-cors', 
                         body: JSON.stringify({ action: 'deleteDeuda', id: idDeuda })
                     });
-                    
                     showToast("Deuda eliminada correctamente");
-                    
-                    // 3. Recargar la base de datos de fondo después de un breve respiro
                     setTimeout(() => cargarDatos(), 1500);
                 } catch(e) {
-                    console.error("Fallo silencioso:", e);
-                    // Aún si falla la red localmente, le avisamos al usuario
                     showToast("Orden de borrado enviada", "success");
                     setTimeout(() => cargarDatos(), 1500);
                 }
             }
         }
 
-        // -- Pagos --
         function llenarSelectDeudas() {
             const sel = document.getElementById('pago-deuda');
+            if(!sel) return;
             sel.innerHTML = '<option value="">Seleccione una deuda activa...</option>';
-            // Solo deudas con saldo pendiente
-            const activas = state.deudas.filter(d => d.saldo_pendiente > 0);
+            const activas = state.deudas.filter(d => parseFloat(d.saldo_pendiente) > 0);
             activas.forEach(d => {
                 sel.innerHTML += `<option value="${d.id_deuda}">${d.nombre_acreedor} - ${d.descripcion} (Saldo: ${formatDinero(d.saldo_pendiente)})</option>`;
             });
@@ -1110,7 +1291,7 @@
 
             document.getElementById('info-saldo-anterior').textContent = formatDinero(deuda.saldo_pendiente);
             document.getElementById('pago-saldo-anterior-val').value = deuda.saldo_pendiente;
-            document.getElementById('pago-monto').max = deuda.saldo_pendiente; // Validar maximo
+            document.getElementById('pago-monto').max = deuda.saldo_pendiente; 
             calcularSaldoRestante();
         }
 
@@ -1119,7 +1300,6 @@
             const montoPagar = parseFloat(document.getElementById('pago-monto').value) || 0;
             
             if(montoPagar > saldoAnt) {
-                // Prevenir pagar más del saldo
                 document.getElementById('pago-monto').value = saldoAnt;
                 showToast("No puedes pagar más del saldo pendiente", "error");
                 calcularSaldoRestante();
@@ -1128,9 +1308,9 @@
 
             const restante = saldoAnt - montoPagar;
             document.getElementById('info-saldo-restante').textContent = formatDinero(restante);
-            // Cambiar color si es 0
+            
             const restEl = document.getElementById('info-saldo-restante');
-            if(restante === 0) restEl.className = 'text-xl font-bold text-emerald-600';
+            if(restante <= 0) restEl.className = 'text-xl font-bold text-emerald-600';
             else restEl.className = 'text-xl font-bold text-secondary';
         }
 
@@ -1143,13 +1323,12 @@
                 showToast("Datos de pago inválidos", "error"); return;
             }
 
-            // Cálculos exactos (Math.round para evitar errores de flotante JS)
-            const saldoAnterior = deuda.saldo_pendiente;
+            const saldoAnterior = parseFloat(deuda.saldo_pendiente) || 0;
             const nuevoSaldo = Math.round((saldoAnterior - monto) * 100) / 100;
-            const nuevoTotalPagado = Math.round((deuda.total_pagado + monto) * 100) / 100;
+            const totalPagadoActual = parseFloat(deuda.total_pagado) || 0;
+            const nuevoTotalPagado = Math.round((totalPagadoActual + monto) * 100) / 100;
             const estado = nuevoSaldo <= 0 ? 'Cancelada' : 'Parcial';
 
-            // Generar número de voucher (ej. V-0015)
             const numVoucher = `V-${(state.pagos.length + 1).toString().padStart(4, '0')}`;
             const fechaActual = new Date();
 
@@ -1157,7 +1336,8 @@
                 id_pago: generarID('PAG'),
                 id_deuda: idDeuda,
                 id_acreedor: deuda.id_acreedor,
-                acreedor: deuda.nombre_acreedor, // Cache para busquedas rapidas
+                acreedor: deuda.nombre_acreedor, 
+                responsable_pago: document.getElementById('pago-responsable').value,
                 fecha_pago: document.getElementById('pago-fecha').value,
                 monto_pagado: monto,
                 metodo_pago: document.getElementById('pago-metodo').value,
@@ -1170,7 +1350,6 @@
             };
 
             if (CONFIG.USE_MOCK_API) {
-                // Actualizar DB en memoria
                 state.pagos.push(nuevoPago);
                 deuda.total_pagado = nuevoTotalPagado;
                 deuda.saldo_pendiente = nuevoSaldo;
@@ -1182,11 +1361,10 @@
                 actualizarVistas();
                 mostrarVoucherGenerado(nuevoPago, deuda);
             } else {
-                // Lógica de GAS
                 const btn = document.querySelector('#form-pago button[type="submit"]');
                 btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Procesando...'; btn.disabled = true;
                 try {
-                    await fetch(CONFIG.GAS_URL, {
+                    await fetch(CONFIG.GAS_URL.trim(), {
                         method: 'POST',
                         body: JSON.stringify({ 
                             action: 'savePago', 
@@ -1208,21 +1386,20 @@
 
         /* ================= VOUCHER GENERATION ================= */
         function mostrarVoucherGenerado(pago, deudaObj = null) {
-            state.currentVoucher = pago; // Guardar referencia para WhatsApp
+            state.currentVoucher = pago; 
             
-            // Llenar datos visuales
             document.getElementById('v-monto').textContent = formatDinero(pago.monto_pagado);
             document.getElementById('v-numero').textContent = pago.voucher_numero;
             document.getElementById('v-fecha').textContent = pago.fecha_hora_str || formatFecha(pago.fecha_pago);
-            document.getElementById('v-acreedor').textContent = pago.acreedor;
+            document.getElementById('v-acreedor').textContent = pago.acreedor || '-';
             document.getElementById('v-deuda-id').textContent = pago.id_deuda;
-            document.getElementById('v-metodo').textContent = pago.metodo_pago;
-            document.getElementById('v-operacion').textContent = pago.numero_operacion;
+            document.getElementById('v-responsable').textContent = pago.responsable_pago || 'No especificado';
+            document.getElementById('v-metodo').textContent = pago.metodo_pago || '-';
+            document.getElementById('v-operacion').textContent = pago.numero_operacion || '-';
             document.getElementById('v-saldo-ant').textContent = formatDinero(pago.saldo_anterior);
             document.getElementById('v-saldo-rest').textContent = formatDinero(pago.saldo_restante);
             document.getElementById('v-obs').textContent = pago.observacion ? `Nota: ${pago.observacion}` : '';
 
-            // Mostrar Modal
             openModal('modal-voucher');
         }
 
@@ -1241,7 +1418,6 @@
             const originalHtml = btn.innerHTML;
             btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Generando...';
             
-            // Usar html2canvas
             html2canvas(node, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
                 const imgData = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
@@ -1261,12 +1437,17 @@
             const v = state.currentVoucher;
             if(!v) return;
 
-            // Buscar teléfono del acreedor (si existe en state)
-            const acreedorObj = state.acreedores.find(a => a.id_acreedor === v.id_acreedor);
-            const telefono = acreedorObj ? acreedorObj.telefono : '';
+            const responsableObj = state.responsables.find(r => r.nombre === v.responsable_pago);
+            let telefono = responsableObj ? (responsableObj.telefono || '') : '';
 
-            // Construir texto
+            if (!telefono) {
+                const acreedorObj = state.acreedores.find(a => a.id_acreedor === v.id_acreedor);
+                telefono = acreedorObj ? (acreedorObj.telefono || '') : '';
+            }
+
             const texto = `✅ *COMPROBANTE DE PAGO*\n\nHola, se realizó un abono correspondiente a la deuda *${v.id_deuda}*.\n\n` +
+                          `🏢 *Abonado a (Acreedor):* ${v.acreedor || 'No especificado'}\n` +
+                          `👤 *Pagado por (Responsable):* ${v.responsable_pago || 'No especificado'}\n` +
                           `💰 *Monto Pagado:* ${formatDinero(v.monto_pagado)}\n` +
                           `💳 *Método:* ${v.metodo_pago}\n` +
                           `📄 *N° Operación:* ${v.numero_operacion}\n` +
